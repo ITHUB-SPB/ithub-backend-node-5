@@ -1,5 +1,7 @@
 import path from 'node:path'
+import { createServer } from 'node:http'
 import express from 'express'
+import { WebSocketServer } from 'ws'
 import * as z from "zod"
 import { ru } from "zod/locales"
 
@@ -14,6 +16,7 @@ const app = express()
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use('/static', express.static(path.join(import.meta.dirname, '..', 'assets', 'uploads')))
+app.use(express.static(path.join(import.meta.dirname, '..', 'public')))
 
 app.use(logger)
 
