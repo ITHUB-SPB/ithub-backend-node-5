@@ -1,7 +1,7 @@
 import path from 'node:path'
 import { createServer } from 'node:http'
 import express from 'express'
-import { WebSocketServer, type WebSocket } from 'ws'
+import { Server, Socket } from 'socket.io'
 import * as z from "zod"
 import { ru } from "zod/locales"
 
@@ -39,9 +39,9 @@ app.use(errorHandler)
 
 const server = createServer(app)
 
-const wss = new WebSocketServer({ server, path: '/chat' })
+const wss = new Server(server, { path: '/chat' })
 
-const connections = new Map<string, WebSocket>()
+const connections = new Map<string, Socket>()
 const messages: { user: string, message: string }[] = []
 
 type ChatEvent = {
@@ -49,12 +49,27 @@ type ChatEvent = {
     message: string
 }
 
-wss.on('connection', (ws, request) => {
+wss.on('connection', (ws) => {
+    ws.on('disconnect', () => {
+        for (const [user, connection] of connections.entries()) {
+            if (connection === Socket) {
+                connections.delete(user)
+            }
+        }
+
+        for (const connection of connections.values()) {
+            connection.send(JSON.stringify({
+                type: 'user:list',
+                message: [...connections.keys()]
+            }))
+        }
+    })
+
     ws.on('message', (eventData) => {
-        console.log({
-            event: String(eventData),
-            url: request.url
-        })
+        // console.log({
+        //     event: String(eventData),
+        //     url: request.url
+        // })
 
         const event: ChatEvent = JSON.parse(String(eventData))
 
@@ -91,21 +106,6 @@ wss.on('connection', (ws, request) => {
             }
         }
 
-    })
-
-    ws.on('close', () => {
-        for (const [user, connection] of connections.entries()) {
-            if (connection === ws) {
-                connections.delete(user)
-            }
-        }
-
-        for (const connection of connections.values()) {
-            connection.send(JSON.stringify({
-                type: 'user:list',
-                message: [...connections.keys()]
-            }))
-        }
     })
 })
 
