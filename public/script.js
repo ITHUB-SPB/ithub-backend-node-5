@@ -1,8 +1,13 @@
-const form = document.forms[0]
+const [loginForm, messageForm] = document.forms
 
-form.addEventListener('submit', event => {
+loginForm.addEventListener('submit', event => {
     event.preventDefault()
+    const inputElement = event.target.querySelector('input')
+    ws.send(inputElement.value)
+})
 
+messageForm.addEventListener('submit', event => {
+    event.preventDefault()
     const inputElement = event.target.querySelector('input')
     ws.send(inputElement.value)
 })
