@@ -1,7 +1,7 @@
 import path from 'node:path'
 import { createServer } from 'node:http'
 import express from 'express'
-import { WebSocketServer } from 'ws'
+import { WebSocketServer, type WebSocket } from 'ws'
 import * as z from "zod"
 import { ru } from "zod/locales"
 
@@ -39,26 +39,73 @@ app.use(errorHandler)
 
 const server = createServer(app)
 
-const wss = new WebSocketServer({ server })
+const wss = new WebSocketServer({ server, path: '/chat' })
 
-const connections = new Set()
+const connections = new Map<string, WebSocket>()
+const messages: { user: string, message: string }[] = []
+
+type ChatEvent = {
+    type: 'user:login' | 'message:send'
+    message: string
+}
 
 wss.on('connection', (ws, request) => {
-    connections.add(ws)
-
-    ws.send(`Hi! There are ${connections.size} users`)
-
-    ws.on('message', event => {
+    ws.on('message', (eventData) => {
         console.log({
-            event: String(event),
+            event: String(eventData),
             url: request.url
         })
 
-        // ws.send(event)
+        const event: ChatEvent = JSON.parse(String(eventData))
+
+        if (event.type === "user:login") {
+            connections.set(event.message, ws)
+
+            for (const connection of connections.values()) {
+                connection.send(JSON.stringify({
+                    type: 'user:list',
+                    message: [...connections.keys()]
+                }))
+            }
+
+            ws.send(JSON.stringify({
+                type: 'message:recent',
+                message: messages.slice(-5)
+            }))
+
+        } else if (event.type === "message:send") {
+            for (const [user, connection] of connections.entries()) {
+                if (connection === ws) {
+                    messages.push({
+                        user,
+                        message: event.message
+                    })
+                }
+            }
+
+            for (const connection of connections.values()) {
+                connection.send(JSON.stringify({
+                    type: 'message:receive',
+                    message: messages.at(-1)
+                }))
+            }
+        }
+
     })
 
     ws.on('close', () => {
-        connections.delete(ws)
+        for (const [user, connection] of connections.entries()) {
+            if (connection === ws) {
+                connections.delete(user)
+            }
+        }
+
+        for (const connection of connections.values()) {
+            connection.send(JSON.stringify({
+                type: 'user:list',
+                message: [...connections.keys()]
+            }))
+        }
     })
 })
 
