@@ -22,7 +22,12 @@ app.use(logger)
 
 app.use('api/products', productsRouter)
 
-app.use((_request: express.Request, _response: express.Response, next: express.NextFunction) => {
+app.use((request: express.Request, _response: express.Response, next: express.NextFunction) => {
+    if (request.path.endsWith('.json')) {
+        next()
+        return
+    }
+
     const error = new Error('Ресурс не найден') as ErrorWithCode
     error.code = "404"
 
@@ -32,4 +37,37 @@ app.use((_request: express.Request, _response: express.Response, next: express.N
 
 app.use(errorHandler)
 
-app.listen(3000)
+const server = createServer(app)
+
+const wss = new WebSocketServer({ server })
+
+const connections = new Set()
+
+wss.on('connection', (ws, request) => {
+    connections.add(ws)
+
+    ws.send(`Hi! There are ${connections.size} users`)
+
+    ws.on('message', event => {
+        console.log({
+            event: String(event),
+            url: request.url
+        })
+
+        // ws.send(event)
+    })
+
+    ws.on('close', () => {
+        connections.delete(ws)
+    })
+})
+
+wss.on('error', (error) => {
+    console.error(error)
+})
+
+wss.on('close', () => {
+    console.log('Disconnected')
+})
+
+server.listen(3000)
