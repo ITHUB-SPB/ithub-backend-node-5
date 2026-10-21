@@ -1,72 +1,62 @@
 import io from 'socket.io-client'
 
-// const [loginForm, messageForm] = document.forms
-// const usersElement = document.getElementById('users')
-// const messagesElement = document.getElementById('messages')
+type ChatMessage = {
+  message: string
+  user: string
+}
+
+const [loginForm, messageForm] = document.forms
+const usersElement = document.getElementById('users')!
+const messagesElement = document.getElementById('messages')!
 
 const socket = io({ host: 'localhost', port: 3000, path: '/chat' })
 
-socket.on('message', (message) => {
-  console.log(message)
+loginForm.addEventListener('submit', event => {
+  event.preventDefault()
+  const inputElement = (event.target as HTMLFormElement).querySelector('input')!
+
+  socket.emit('user:login', inputElement.value)
 })
 
-// const prepareMessage = ({ type, message }) => {
-//   return JSON.stringify({
-//     type,
-//     message
-//   })
-// }
+messageForm.addEventListener('submit', event => {
+  event.preventDefault()
+  const inputElement = (event.target as HTMLFormElement).querySelector('input')!
 
-// loginForm.addEventListener('submit', event => {
-//   event.preventDefault()
-//   const inputElement = event.target.querySelector('input')
-// ws.send(prepareMessage({
-//     type: 'user:login',
-//     message: inputElement.value
-// }))
-// })
+  socket.emit('message:send', inputElement.value)
+})
 
-// messageForm.addEventListener('submit', event => {
-//   event.preventDefault()
-//   const inputElement = event.target.querySelector('input')
-// ws.send(prepareMessage({
-//     type: 'message:send',
-//     message: inputElement.value
-// }))
-// })
 
-// const ws = new WebSocket('ws://localhost:3000/chat')
+socket.on("user:list", users => {
+  usersElement.innerHTML = `Online: ${users.join(', ')}`
+})
+
+socket.on("message:receive", (messageObject: ChatMessage) => {
+  const pElement = document.createElement('p')
+  pElement.innerText = `${new Date().toLocaleTimeString('ru')} [${messageObject.user}] ${messageObject.message}`
+  messagesElement.appendChild(pElement)
+})
+
+socket.on("message:recent", (messages: ChatMessage[]) => {
+  messagesElement.append(
+    ...messages.map(({ message, user }) => {
+      console.log(message, user)
+      const pElement = document.createElement('p')
+      pElement.innerText = `${new Date().toLocaleTimeString('ru')} [${user}] ${message}`
+      return pElement
+    })
+  )
+})
 
 // ws.onopen = event => {
 //     console.log('Opened')
 // }
 
 // ws.onmessage = event => {
-//     const data = JSON.parse(event.data)
-
 //     console.log('Message', {
 //         type: data.type,
 //         message: data.message,
 //         time: Math.floor(event.timeStamp)
 //     })
-
-//     if (data.type === "user:list") {
-//         usersElement.innerHTML = `Online: ${data.message.join(', ')}`
-//     } else if (data.type === "message:receive") {
-//         const pElement = document.createElement('p')
-//         pElement.innerText = `${new Date().toLocaleTimeString('ru')} [${data.message.user}] ${data.message.message}`
-//         messagesElement.appendChild(pElement)
-//     } else if (data.type === "message:recent") {
-//         messagesElement.append(
-//             ...data.message.map(({ message, user }) => {
-//                 console.log(message, user)
-//                 const pElement = document.createElement('p')
-//                 pElement.innerText = `${new Date().toLocaleTimeString('ru')} [${user}] ${message}`
-//                 return pElement
-//             })
-//         )
-//     }
-
 // }
 
 // ws.onerror = event => {
