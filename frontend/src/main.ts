@@ -1,31 +1,39 @@
-const [loginForm, messageForm] = document.forms
-const usersElement = document.getElementById('users')
-const messagesElement = document.getElementById('messages')
+import io from 'socket.io-client'
 
-const prepareMessage = ({ type, message }) => {
-    return JSON.stringify({
-        type,
-        message
-    })
-}
+// const [loginForm, messageForm] = document.forms
+// const usersElement = document.getElementById('users')
+// const messagesElement = document.getElementById('messages')
 
-loginForm.addEventListener('submit', event => {
-    event.preventDefault()
-    const inputElement = event.target.querySelector('input')
-    // ws.send(prepareMessage({
-    //     type: 'user:login',
-    //     message: inputElement.value
-    // }))
+const socket = io({ host: 'localhost', port: 3000, path: '/chat' })
+
+socket.on('message', (message) => {
+  console.log(message)
 })
 
-messageForm.addEventListener('submit', event => {
-    event.preventDefault()
-    const inputElement = event.target.querySelector('input')
-    // ws.send(prepareMessage({
-    //     type: 'message:send',
-    //     message: inputElement.value
-    // }))
-})
+// const prepareMessage = ({ type, message }) => {
+//   return JSON.stringify({
+//     type,
+//     message
+//   })
+// }
+
+// loginForm.addEventListener('submit', event => {
+//   event.preventDefault()
+//   const inputElement = event.target.querySelector('input')
+// ws.send(prepareMessage({
+//     type: 'user:login',
+//     message: inputElement.value
+// }))
+// })
+
+// messageForm.addEventListener('submit', event => {
+//   event.preventDefault()
+//   const inputElement = event.target.querySelector('input')
+// ws.send(prepareMessage({
+//     type: 'message:send',
+//     message: inputElement.value
+// }))
+// })
 
 // const ws = new WebSocket('ws://localhost:3000/chat')
 

@@ -6,7 +6,8 @@
     "module": "nodenext",
     "target": "esnext",
     "lib": [
-      "esnext"
+      "esnext",
+      "dom"
     ],
     "types": [
       "node"
