@@ -7,7 +7,7 @@ export default function (request: Request, response: Response, next: NextFunctio
         url: request.url,
         params: request.params,
         queryParams: request.query ?? {},
-        body: JSON.parse(request.body ?? "{}")
+        body: request.body ?? {}
     }
 
     response.on('end', () => {

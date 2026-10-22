@@ -5,7 +5,7 @@ type ErrorCode = `${4 | 5}${number}${number}`
 
 export function formatSuccess(
     response: Response,
-    data: { [k: string]: object },
+    data: unknown,
     code: SuccessCode
 ) {
     response.status(Number(code)).json({

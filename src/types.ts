@@ -1,13 +1,21 @@
-import * as z from 'zod'
-import { metaSchema } from "./schemas/common.schema.js";
+import type * as z from 'zod'
+import { metaSchema } from './schemas/common.schema.js'
 
-export type ErrorWithCode = Error & { code?: `${4 | 5}${number}${number}` }
+export class HttpError extends Error {
+    constructor(message: string, public readonly status = 400) {
+        super(message)
+    }
+}
+
+export type ErrorWithCode = Error & {
+    code: string
+}
 
 export type BaseEntity = {
-    id: string | number;
+    id: number;
 }
 
 export type DataWithMeta<T> = {
-    data: Partial<T>[],
+    data: T[]
     meta: z.infer<typeof metaSchema>
 }
