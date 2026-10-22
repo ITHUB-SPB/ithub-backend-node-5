@@ -11,7 +11,7 @@ import {
 import { formatSuccess } from '../middleware/format-result.js'
 import { accountsRepository } from '../repository/accounts.repository.js'
 import { loginInputSchema, registerInputSchema } from '../schemas/auth.schema.js'
-import { sendWelcomeMail } from '../mail.js'
+import { emailQueue } from '../queue.js'
 import { HttpError } from '../types.js'
 
 const refreshCookieOptions = {
@@ -30,7 +30,7 @@ authRouter.post('/register', async (request, response) => {
 
     const account = await accountsRepository.add({ email: body.email, password })
 
-    await sendWelcomeMail(account)
+    emailQueue.add('welcome-email', account)
 
     formatSuccess(response, {
         id: account.id,
