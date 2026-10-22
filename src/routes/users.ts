@@ -4,6 +4,7 @@ import path from 'node:path'
 
 import { Router } from 'express'
 import multer from 'multer'
+import sharp from 'sharp'
 
 import { requireAuth } from '../auth.js'
 import { formatSuccess } from '../middleware/format-result.js'
@@ -72,14 +73,27 @@ usersRouter.post('/:id/profile', requireAuth, upload.single('avatar'), async (re
         throw new HttpError('Пользователь не найден', 404)
     }
 
-    // input.body.avatar
-    const avatarUrl = request.file ? `/static/${request.file.filename}` : undefined
+    const avatarUrl = request.file?.filename ? `/static/uploads/${request.file.filename}` : undefined
 
-    const profile = await accountsRepository.saveProfile(
-        accountId,
-        input.body.bio,
-        avatarUrl,
-    )
+    setTimeout(async () => {
+        if (avatarUrl) {
+            const dirname = path.dirname(import.meta.dirname)
+            const pathToOriginalFile = path.join(dirname, '..', 'assets', 'uploads', request.file!.filename)
+            const pathToThumbnailFile = path.join(dirname, '..', 'assets', 'thumbnails', request.file!.filename)
 
-    formatSuccess(response, profile, '200')
+            await sharp(pathToOriginalFile).png({ quality: 90 }).resize({
+                fit: "cover",
+                width: 120,
+                height: 120
+            }).toFile(pathToThumbnailFile)
+        }
+
+        const profile = await accountsRepository.saveProfile(
+            accountId,
+            input.body.bio,
+            avatarUrl,
+        )
+
+        formatSuccess(response, profile, '200')
+    }, 3_000)
 })

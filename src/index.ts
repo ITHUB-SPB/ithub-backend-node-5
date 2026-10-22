@@ -14,7 +14,7 @@ const app = express()
 
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
-app.use('/static', express.static(path.join(import.meta.dirname, '..', 'assets', 'uploads')))
+app.use('/static', express.static(path.join(import.meta.dirname, '..', 'assets')))
 
 app.use(logger)
 
