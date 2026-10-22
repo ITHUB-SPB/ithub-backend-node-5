@@ -4,6 +4,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "tsx --watch src/index.ts",
+    "workers": "tsx src/workers.ts",
     "check": "tsc --noEmit",
     "build": "tsc",
     "db:migrate": "prisma migrate dev",
@@ -26,6 +27,7 @@
     "bullmq": "^6.4.0",
     "dotenv": "^18.0.5",
     "express": "^5.2.1",
+    "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
     "mime-types": "^3.0.2",
     "multer": "^2.4.0",

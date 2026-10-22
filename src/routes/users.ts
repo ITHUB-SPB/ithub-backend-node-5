@@ -12,6 +12,7 @@ import { accountsRepository } from '../repository/accounts.repository.js'
 import {
     createProfileInputSchema,
 } from '../schemas/accounts.schema.js'
+import { thumbnailsQueue } from '../queue.js'
 import { HttpError } from '../types.js'
 
 const uploadsDirectory = path.join(
@@ -81,11 +82,10 @@ usersRouter.post('/:id/profile', requireAuth, upload.single('avatar'), async (re
             const pathToOriginalFile = path.join(dirname, '..', 'assets', 'uploads', request.file!.filename)
             const pathToThumbnailFile = path.join(dirname, '..', 'assets', 'thumbnails', request.file!.filename)
 
-            await sharp(pathToOriginalFile).png({ quality: 90 }).resize({
-                fit: "cover",
-                width: 120,
-                height: 120
-            }).toFile(pathToThumbnailFile)
+            thumbnailsQueue.add('generate-thumbnail', {
+                pathToOriginalFile,
+                pathToThumbnailFile
+            })
         }
 
         const profile = await accountsRepository.saveProfile(
