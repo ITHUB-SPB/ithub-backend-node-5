@@ -55,6 +55,31 @@ productsRouter.get('/', async (request, response) => {
     formatSuccess(response, result, '200')
 })
 
+/**
+ * @openapi
+ * /api/products/{id}:
+ *   get:
+ *     summary: Получить продукт по ID
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID продукта
+ *     responses:
+ *       200:
+ *         description: Данные о продукте
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Product'
+ *       400:
+ *         description: Продукт не найден
+ */
 productsRouter.get('/:id', requireAuth, async (request, response) => {
     const id = positiveIdSchema.parse(request.params['id'])
     const product = await productsRepository.getOne(id)

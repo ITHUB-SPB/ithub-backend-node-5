@@ -5,10 +5,13 @@ import helmet from 'helmet'
 import { rateLimit } from 'express-rate-limit'
 import * as z from 'zod'
 import { ru } from 'zod/locales'
+import swaggerUI from 'swagger-ui-express'
+
 import { authRouter } from './routes/auth.js'
 import { productsRouter } from './routes/products.js'
 import { usersRouter } from './routes/users.js'
 import { logger, errorHandler } from './middleware/index.js'
+import { specs } from './swagger.js'
 import { HttpError } from './types.js'
 
 z.config(ru())
@@ -31,6 +34,8 @@ app.use((request, response, next) => {
 })
 app.use('/static', express.static(path.join(import.meta.dirname, '..', 'assets', 'uploads')))
 app.use(logger)
+
+app.use('/docs', swaggerUI.serve, swaggerUI.setup(specs))
 
 app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: 'draft-8', legacyHeaders: false }), authRouter)
 app.use('/api/products', productsRouter)
