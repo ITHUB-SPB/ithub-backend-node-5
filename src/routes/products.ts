@@ -3,6 +3,7 @@ import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
 
 import { Router } from 'express'
+import { os } from '@orpc/server'
 import multer from 'multer'
 
 import { requireAuth } from '../auth.js'
@@ -12,6 +13,7 @@ import { positiveIdSchema } from '../schemas/common.schema.js'
 import {
     createProductInputSchema,
     getManyProductsInputSchema,
+    getProductsWithMetaOutputSchema,
     updateProductInputSchema,
 } from '../schemas/products.schema.js'
 import { HttpError } from '../types.js'
@@ -48,12 +50,20 @@ const upload = multer({
 
 export const productsRouter = Router()
 
-productsRouter.get('/', async (request, response) => {
-    const { query } = getManyProductsInputSchema.parse({ query: request.query })
-    const result = await productsRepository.getAll(query)
+const getManyProducts = os
+    .route({ method: 'GET', path: '/products' })
+    .input(getManyProductsInputSchema)
+    .output(getProductsWithMetaOutputSchema)
+    .handler(async ({ input }) => {
+        // formatSuccess(response, result, '200')
+        return await productsRepository.getAll(input)
+    })
 
-    formatSuccess(response, result, '200')
-})
+export const productsRouterOrpc = {
+    products: {
+        getManyProducts
+    },
+}
 
 /**
  * @openapi

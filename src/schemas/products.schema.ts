@@ -26,19 +26,17 @@ export const updateProductInputSchema = z.object({
     body: productFieldsSchema.partial(),
 })
 
-export const getManyProductsInputSchema = z.object({
-    query: paginationSchema.extend({
-        category: categorySchema.optional(),
-        creator: trimmedEmailSchema.optional(),
-        minPrice: z.coerce.number().nonnegative().optional(),
-        maxPrice: z.coerce.number().positive().optional(),
-    }).refine(query => query.minPrice === undefined || query.maxPrice === undefined || query.minPrice <= query.maxPrice, {
-        message: 'minPrice не может быть больше maxPrice',
-        path: ['minPrice'],
-    }),
+export const getManyProductsInputSchema = paginationSchema.extend({
+    category: categorySchema.optional(),
+    creator: trimmedEmailSchema.optional(),
+    minPrice: z.coerce.number().nonnegative().optional(),
+    maxPrice: z.coerce.number().positive().optional(),
+}).refine(query => query.minPrice === undefined || query.maxPrice === undefined || query.minPrice <= query.maxPrice, {
+    message: 'minPrice не может быть больше maxPrice',
+    path: ['minPrice'],
 })
 
-export type GetManyProductsQuery = z.output<typeof getManyProductsInputSchema>['query']
+export type GetManyProductsQuery = z.output<typeof getManyProductsInputSchema>
 export type CreateProductBody = z.output<typeof createProductInputSchema>['body']
 export type UpdateProductBody = z.output<typeof updateProductInputSchema>['body']
 

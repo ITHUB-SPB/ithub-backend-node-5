@@ -7,16 +7,50 @@ import * as z from 'zod'
 import { ru } from 'zod/locales'
 import swaggerUI from 'swagger-ui-express'
 
+import { OpenAPIGenerator } from '@orpc/openapi'
+import { OpenAPIHandler } from '@orpc/openapi/node'
+import { onError } from '@orpc/server'
+import { CORSPlugin } from '@orpc/server/plugins'
+
 import { authRouter } from './routes/auth.js'
 import { productsRouter } from './routes/products.js'
 import { usersRouter } from './routes/users.js'
 import { logger, errorHandler } from './middleware/index.js'
 import { specs } from './swagger.js'
 import { HttpError } from './types.js'
+import { productsRouterOrpc } from './routes/products.js'
+
+import {
+    ZodToJsonSchemaConverter
+} from '@orpc/zod/zod4'
 
 z.config(ru())
 
+const handler = new OpenAPIHandler(productsRouterOrpc, {
+    plugins: [new CORSPlugin()],
+    interceptors: [
+        onError((error) => {
+            console.error(error)
+        }),
+    ],
+})
+
+const openAPIGenerator = new OpenAPIGenerator({
+    schemaConverters: [
+        new ZodToJsonSchemaConverter(),
+    ],
+})
+
+const openApiDocument = await openAPIGenerator.generate(productsRouterOrpc, {
+    info: {
+        title: "Products API",
+        version: "0.1.0",
+        description: "Products API Docs",
+    },
+})
+
 const app = express()
+
 app.disable('x-powered-by')
 app.use(helmet({ frameguard: { action: 'deny' } }))
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, limit: 300, standardHeaders: 'draft-8', legacyHeaders: false }))
@@ -35,7 +69,20 @@ app.use((request, response, next) => {
 app.use('/static', express.static(path.join(import.meta.dirname, '..', 'assets', 'uploads')))
 app.use(logger)
 
-app.use('/docs', swaggerUI.serve, swaggerUI.setup(specs))
+app.use('/api{/*path}', async (req, res, next) => {
+    const { matched } = await handler.handle(req, res, {
+        prefix: '/api',
+        context: {},
+    })
+
+    if (matched) {
+        return
+    }
+
+    next()
+})
+
+app.use('/docs', swaggerUI.serve, swaggerUI.setup(openApiDocument))
 
 app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: 'draft-8', legacyHeaders: false }), authRouter)
 app.use('/api/products', productsRouter)
