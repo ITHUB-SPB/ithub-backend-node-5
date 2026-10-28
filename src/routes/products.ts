@@ -2,11 +2,14 @@ import { randomUUID } from 'node:crypto'
 import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
 
-import { Router } from 'express'
-import { os } from '@orpc/server'
+import { Router, type Request, type Response } from 'express'
+import jwt, { type JwtPayload } from 'jsonwebtoken'
+import { os, ORPCError } from '@orpc/server'
 import multer from 'multer'
+import * as z from 'zod'
 
-import { requireAuth } from '../auth.js'
+
+import { requireAuth, accessSecret } from '../auth.js'
 import { formatSuccess } from '../middleware/format-result.js'
 import { productsRepository } from '../repository/products.repository.js'
 import { positiveIdSchema } from '../schemas/common.schema.js'
@@ -15,6 +18,7 @@ import {
     getManyProductsInputSchema,
     getProductsWithMetaOutputSchema,
     updateProductInputSchema,
+    productDetailsSchema
 } from '../schemas/products.schema.js'
 import { HttpError } from '../types.js'
 
@@ -50,8 +54,32 @@ const upload = multer({
 
 export const productsRouter = Router()
 
-const getManyProducts = os
-    .route({ method: 'GET', path: '/products' })
+const base = os.$context<{ req: Request, res: Response }>()
+
+const authMiddleware = base
+    .middleware(({ next, context }) => {
+        const token = context.req.header('authorization')?.match(/^Bearer\s+(.+)$/i)?.[1]
+        if (!token) {
+            throw new ORPCError('UNAUTHORIZED', { message: 'Требуется авторизация' })
+        }
+        try {
+            return next({
+                context: {
+                    user: jwt.verify(token, accessSecret)
+                }
+            })
+        } catch {
+            throw new ORPCError('UNAUTHORIZED', { message: 'Недействительный токен' })
+        }
+    })
+
+const getManyProducts = base
+    .route({
+        method: 'GET',
+        path: '/api/products',
+        summary: 'Список товаров с фильтрацией и пагинацией',
+        tags: ['Товары']
+    })
     .input(getManyProductsInputSchema)
     .output(getProductsWithMetaOutputSchema)
     .handler(async ({ input }) => {
@@ -59,9 +87,33 @@ const getManyProducts = os
         return await productsRepository.getAll(input)
     })
 
+const getOneProduct = base
+    .route({
+        method: 'GET',
+        path: '/api/products/{id}',
+        summary: 'Детальная информация о товаре (требует авторизации)',
+        tags: ['Товары']
+    })
+    .use(authMiddleware)
+    .input(
+        z.object({ id: positiveIdSchema })
+    )
+    .output(productDetailsSchema)
+    .handler(async ({ input }) => {
+        const product = await productsRepository.getOne(input.id)
+
+        if (!product) {
+            throw new HttpError('Товар не найден', 404)
+        }
+
+        return product
+    })
+
+
 export const productsRouterOrpc = {
     products: {
-        getManyProducts
+        getManyProducts,
+        getOneProduct
     },
 }
 

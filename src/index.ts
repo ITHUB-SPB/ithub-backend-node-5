@@ -71,8 +71,10 @@ app.use(logger)
 
 app.use('/api{/*path}', async (req, res, next) => {
     const { matched } = await handler.handle(req, res, {
-        prefix: '/api',
-        context: {},
+        context: {
+            req,
+            res
+        },
     })
 
     if (matched) {

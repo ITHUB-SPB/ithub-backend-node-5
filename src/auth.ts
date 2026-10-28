@@ -6,8 +6,8 @@ import type { RequestHandler } from 'express'
 import { HttpError } from './types.js'
 
 const scrypt = promisify(scryptCallback)
-function requiredEnvironment(name: 'ACCESS_TOKEN_SECRET' | 'REFRESH_TOKEN_SECRET'): string {
 
+function requiredEnvironment(name: 'ACCESS_TOKEN_SECRET' | 'REFRESH_TOKEN_SECRET'): string {
     const value = process.env[name]
 
     if (!value) throw new Error('ACCESS_TOKEN_SECRET и REFRESH_TOKEN_SECRET должны быть указаны в .env')
@@ -15,8 +15,8 @@ function requiredEnvironment(name: 'ACCESS_TOKEN_SECRET' | 'REFRESH_TOKEN_SECRET
 
 }
 
-const accessSecret = requiredEnvironment('ACCESS_TOKEN_SECRET')
-const refreshSecret = requiredEnvironment('REFRESH_TOKEN_SECRET')
+export const accessSecret = requiredEnvironment('ACCESS_TOKEN_SECRET')
+export const refreshSecret = requiredEnvironment('REFRESH_TOKEN_SECRET')
 
 export type TokenUser = { id: number, email: string, role: 'user' | 'moderator' }
 
