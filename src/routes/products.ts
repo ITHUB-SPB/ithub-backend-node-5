@@ -18,7 +18,8 @@ import {
     getManyProductsInputSchema,
     getProductsWithMetaOutputSchema,
     updateProductInputSchema,
-    productDetailsSchema
+    productDetailsSchema,
+    productFieldsSchema
 } from '../schemas/products.schema.js'
 import { HttpError } from '../types.js'
 
@@ -54,10 +55,10 @@ const upload = multer({
 
 export const productsRouter = Router()
 
-const base = os.$context<{ req: Request, res: Response }>()
+const publicBase = os.$context<{ req: Request, res: Response }>()
 
-const authMiddleware = base
-    .middleware(({ next, context }) => {
+const protectedBase = publicBase
+    .use(({ next, context }) => {
         const token = context.req.header('authorization')?.match(/^Bearer\s+(.+)$/i)?.[1]
         if (!token) {
             throw new ORPCError('UNAUTHORIZED', { message: 'Требуется авторизация' })
@@ -65,7 +66,7 @@ const authMiddleware = base
         try {
             return next({
                 context: {
-                    user: jwt.verify(token, accessSecret)
+                    user: jwt.verify(token, accessSecret) as JwtPayload
                 }
             })
         } catch {
@@ -73,7 +74,8 @@ const authMiddleware = base
         }
     })
 
-const getManyProducts = base
+
+const getManyProducts = publicBase
     .route({
         method: 'GET',
         path: '/api/products',
@@ -83,18 +85,20 @@ const getManyProducts = base
     .input(getManyProductsInputSchema)
     .output(getProductsWithMetaOutputSchema)
     .handler(async ({ input }) => {
-        // formatSuccess(response, result, '200')
         return await productsRepository.getAll(input)
     })
 
-const getOneProduct = base
+const getOneProduct = protectedBase
     .route({
         method: 'GET',
         path: '/api/products/{id}',
         summary: 'Детальная информация о товаре (требует авторизации)',
-        tags: ['Товары']
+        tags: ['Товары'],
+        spec: (initialSpec) => ({
+            ...initialSpec,
+            security: [{ bearerAuth: [] }]
+        })
     })
-    .use(authMiddleware)
     .input(
         z.object({ id: positiveIdSchema })
     )
@@ -103,67 +107,60 @@ const getOneProduct = base
         const product = await productsRepository.getOne(input.id)
 
         if (!product) {
-            throw new HttpError('Товар не найден', 404)
+            throw new ORPCError('NOT_FOUND', { message: 'Товар не найден' })
         }
 
         return product
+    })
+
+const createProduct = protectedBase
+    .route({
+        method: 'POST',
+        path: '/api/products/',
+        summary: 'Создание товара (требует авторизации)',
+        tags: ['Товары'],
+        spec: (initialSpec) => ({
+            ...initialSpec,
+            security: [{ bearerAuth: [] }]
+        })
+    })
+    .use(async ({ next }) => {
+        try {
+            upload.single('image')
+        } catch (error) {
+            if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
+                throw new ORPCError('PAYLOAD_TOO_LARGE', { message: 'Размер изображения не должен превышать 2 МБ' })
+            }
+
+            if (error instanceof multer.MulterError) {
+                throw new ORPCError('UNPROCESSABLE_CONTENT', { message: 'Не удалось загрузить изображение' })
+            }
+        }
+
+        return next()
+    })
+    .input(productFieldsSchema)
+    .output(productDetailsSchema)
+    .handler(async ({ input, context }) => {
+        const imageUrl = context.req.file
+            ? `/static/${context.req.file.filename}`
+            : null
+
+        return await productsRepository.add(
+            input,
+            context.user!.id,
+            imageUrl
+        )
     })
 
 
 export const productsRouterOrpc = {
     products: {
         getManyProducts,
-        getOneProduct
+        getOneProduct,
+        createProduct
     },
 }
-
-/**
- * @openapi
- * /api/products/{id}:
- *   get:
- *     summary: Получить продукт по ID
- *     tags: [Products]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: ID продукта
- *     responses:
- *       200:
- *         description: Данные о продукте
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Product'
- *       400:
- *         description: Продукт не найден
- */
-productsRouter.get('/:id', requireAuth, async (request, response) => {
-    const id = positiveIdSchema.parse(request.params['id'])
-    const product = await productsRepository.getOne(id)
-
-    if (!product) {
-        throw new HttpError('Товар не найден', 404)
-    }
-
-    formatSuccess(response, product, '200')
-})
-
-productsRouter.post('/', requireAuth, upload.single('image'), async (request, response) => {
-    const input = createProductInputSchema.parse({
-        headers: request.headers,
-        body: request.body,
-    })
-
-    const imageUrl = request.file ? `/static/${request.file.filename}` : null
-    const product = await productsRepository.add(input.body, request.user!.id, imageUrl)
-
-    formatSuccess(response, product, '201')
-})
 
 productsRouter.patch('/:id', requireAuth, upload.single('image'), async (request, response) => {
     const input = updateProductInputSchema.parse({
@@ -190,21 +187,4 @@ productsRouter.patch('/:id', requireAuth, upload.single('image'), async (request
     const product = await productsRepository.update(input.params.id, input.body, imageUrl)
 
     formatSuccess(response, product, '200')
-})
-
-productsRouter.use((
-    error: unknown,
-    _request: import('express').Request,
-    _response: import('express').Response,
-    next: import('express').NextFunction,
-) => {
-    if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
-        return next(new HttpError('Размер изображения не должен превышать 2 МБ', 422))
-    }
-
-    if (error instanceof multer.MulterError) {
-        return next(new HttpError('Не удалось загрузить изображение', 422))
-    }
-
-    next(error)
 })

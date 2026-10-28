@@ -74,7 +74,6 @@ export const requireModerator: RequestHandler = (request, _response, next) => {
 }
 
 export function getCookie(request: import('express').Request, name: string): string | undefined {
-
     const cookies = request.headers.cookie?.split(';') ?? []
     const cookie = cookies.find(item => item.trim().startsWith(`${name}=`))
 

@@ -8,7 +8,7 @@ const optionalText = (max: number) => z.preprocess(
     z.string().trim().max(max).optional(),
 )
 
-const productFieldsSchema = z.object({
+export const productFieldsSchema = z.object({
     name: z.string().trim().min(2).max(100),
     price: z.coerce.number().positive(),
     category: categorySchema,

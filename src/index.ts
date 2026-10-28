@@ -7,7 +7,6 @@ import * as z from 'zod'
 import { ru } from 'zod/locales'
 import swaggerUI from 'swagger-ui-express'
 
-import { OpenAPIGenerator } from '@orpc/openapi'
 import { OpenAPIHandler } from '@orpc/openapi/node'
 import { onError } from '@orpc/server'
 import { CORSPlugin } from '@orpc/server/plugins'
@@ -16,13 +15,10 @@ import { authRouter } from './routes/auth.js'
 import { productsRouter } from './routes/products.js'
 import { usersRouter } from './routes/users.js'
 import { logger, errorHandler } from './middleware/index.js'
-import { specs } from './swagger.js'
 import { HttpError } from './types.js'
 import { productsRouterOrpc } from './routes/products.js'
+import { openApiDocument } from './openapi.js'
 
-import {
-    ZodToJsonSchemaConverter
-} from '@orpc/zod/zod4'
 
 z.config(ru())
 
@@ -35,19 +31,6 @@ const handler = new OpenAPIHandler(productsRouterOrpc, {
     ],
 })
 
-const openAPIGenerator = new OpenAPIGenerator({
-    schemaConverters: [
-        new ZodToJsonSchemaConverter(),
-    ],
-})
-
-const openApiDocument = await openAPIGenerator.generate(productsRouterOrpc, {
-    info: {
-        title: "Products API",
-        version: "0.1.0",
-        description: "Products API Docs",
-    },
-})
 
 const app = express()
 
